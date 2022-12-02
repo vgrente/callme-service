@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: build-spring-boot-pipeline-run
+spec:
+  params:
+    - name: image
+      value: vgrente/callme-service:0.0.2
+  pipelineRef:
+    name: build-spring-boot-pipeline
+  serviceAccountName: buildpacks-service-account
+  workspaces:
+    - name: source-workspace
+      persistentVolumeClaim:
+        claimName: tekton-workspace-pvc
+      subPath: source
+    - name: cache-workspace
+      persistentVolumeClaim:
+        claimName: tekton-workspace-pvc
+      subPath: cache
+
+

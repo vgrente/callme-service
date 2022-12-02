@@ -1,0 +1,45 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: callme-service
+  annotations:
+    serving.knative.dev/rollout-duration: "300s"
+spec:
+  template:
+    metadata:
+      name: callme-service-rev3
+    spec:
+      containers:
+        - name: callme
+          image: vgrente/callme-service:0.0.2
+          imagePullPolicy: "Always"
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /livez
+            periodSeconds: 10
+            timeoutSeconds: 1
+            initialDelaySeconds: 130
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /readyz
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 3
+          env:
+            - name: MANAGEMENT_SERVER_PORT
+              value: "8888"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: DATABASE_SERVER
+              value: "jdbc:h2:mem:testdb;"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace

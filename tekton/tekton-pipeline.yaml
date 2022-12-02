@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-spring-boot-pipeline
+spec:
+  params:
+    - description: image URL to push
+      name: image
+      type: string
+  tasks:
+    - name: fetch-repository
+      params:
+        - name: url
+          value: 'https://github.com/vgrente/callme-service.git'
+        - name: subdirectory
+          value: ''
+        - name: deleteExisting
+          value: 'true'
+        - name: verbose
+          value: 'true'
+      taskRef:
+        kind: Task
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source-workspace
+    - name: buildpacks
+      params:
+        - name: APP_IMAGE
+          value: $(params.image)
+        - name: SOURCE_SUBPATH # (1)
+          value: ""
+        - name: BUILDER_IMAGE # (2)
+          value: 'dashaun/java-native-builder-arm64:7.41.0'
+        - name: ENV_VARS # (3)
+          value:
+            - BP_NATIVE_IMAGE=true
+            - USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
+      runAfter:
+        - fetch-repository
+      taskRef:
+        kind: Task
+        name: buildpacks
+      workspaces:
+        - name: source
+          workspace: source-workspace
+        - name: cache
+          workspace: cache-workspace
+    - name: deploy
+      params:
+        - name: script # (4)
+          value: |
+            kubectl apply -f https://raw.githubusercontent.com/vgrente/callme-service/main/k8s/ksvc.yaml
+      runAfter:
+        - buildpacks
+      taskRef:
+        name: kubernetes-actions
+      workspaces:
+        - name: manifest-dir
+          workspace: source-workspace
+  workspaces:
+    - name: source-workspace
+    - name: cache-workspace
